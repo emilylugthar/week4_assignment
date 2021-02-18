@@ -98,33 +98,38 @@ These exercises will reiterate what you learned in the "Mapping data with R" tut
   
 ```{r}
 world <- get_stamenmap(
-    bbox = c(left = -180, bottom = -57, right = 179, top = 82.1), 
+    bbox = c(left = -180, 
+             bottom = -57, 
+             right = 179, 
+             top = 82.1), 
     zoom = 2)
 
 ggmap(world) + 
   geom_point(data = Starbucks, 
-             aes(x = Longitude, y = Latitude, color = `Ownership Type`), 
+             aes(x = Longitude, 
+                 y = Latitude, 
+                 color = `Ownership Type`), 
              alpha = .3, 
              size = .1) +
+  labs(title = "Starbucks Locations Across the World") +
   theme_map()
 ```
 
-Can see generally what parts of the world Starbucks are located and concentrations of ownership type. 
+This visualization shows generally the locations and concentrations of Starbucks stores across the world. It also shows the spacial distribution of ownership type.
 
   2. Construct a new map of Starbucks locations in the Twin Cities metro area (approximately the 5 county metro area).  
 
 ```{r}
 saint_paul <- get_stamenmap(
     bbox = c(left = -93.3825, bottom = 44.8728, right = -93.0083, top = 45.0511),
-    maptype = "toner",
     zoom = 11)
 
 ggmap(saint_paul) + 
   geom_point(data = Starbucks, 
-             aes(x = Longitude, y = Latitude, color = `Ownership Type`), 
+             aes(x = Longitude, y = Latitude), 
              alpha = .7, 
              size = 2) +
-  expand_limits(x = states_map$long, y = states_map$lat) +
+  labs(title = "Starbucks Locations within the Twin Cities")
   theme_map()
 ```
 
@@ -145,7 +150,6 @@ ggmap(saint_paul) +
   geom_point(data = Starbucks, 
              aes(x = Longitude, y = Latitude, color = `Ownership Type`), 
              size = 2) +
-  expand_limits(x = states_map$long, y = states_map$lat) +
   theme_map()
 ```
 
@@ -163,7 +167,6 @@ ggmap(saint_paul) +
              size = 2) +
   annotate(geom = "text", x = -93.169233, y = 44.937846, label = "Macalester College") +
   annotate(geom = "point", x = -93.169233, y = 44.937846) +
-  expand_limits(x = states_map$long, y = states_map$lat) +
   theme_map()
 ```
 
@@ -199,6 +202,8 @@ starbucks_with_2018_pop_est <-
   7. Create a choropleth map that shows the number of Starbucks per 10,000 people on a map of the US. Use a new fill color, add points for all Starbucks in the US (except Hawaii and Alaska), add an informative title for the plot, and include a caption that says who created the plot (you!). Make a conclusion about what you observe.
   
 ```{r}
+states_map <- map_data("state")
+
 starbucks_with_2018_pop_est %>% 
   ggplot() +
   geom_map(map = states_map,
@@ -404,20 +409,26 @@ covid19 %>%
   13. **CHALLENGE** Choose 4 dates spread over the time period of the data and create the same map as in exercise 12 for each of the dates. Display the four graphs together using faceting. What do you notice?
 
 ```{r}
-states_map <- map_data("state")
+#states_map <- map_data("state")
 
 covid19 %>% 
-  group_by(state) %>% 
-  summarize(recent_count = max(cases)) %>% 
-  mutate(state = str_to_lower(state)) %>% 
+  filter(date == "2020-03-01" | 
+           date == "2020-08-01" |
+           date == "2020-12-01" | 
+           date == "2021-02-01") %>% 
+  group_by(state, date) %>%
+  summarize(recent_count = max(cases)) %>%
+  mutate(state = str_to_lower(state)) %>%
   left_join(census_pop_est_2018,
-            by = "state") %>% 
-  mutate(cases_per_tentho = (recent_count/est_pop_2018)*10000) %>%
+            by = "state") %>%
+  mutate(cases_per_tentho = (recent_count/est_pop_2018)*10000) %>% 
   ggplot() +
     geom_map(map = states_map,
              aes(map_id  = state,
                  fill = cases_per_tentho)) +
+  scale_fill_viridis_c(option = "plasma") +
   expand_limits(x = states_map$long, y = states_map$lat) +
+  facet_wrap(~date) +
   theme_map()
   
 
@@ -434,23 +445,105 @@ covid19 %>%
 These exercises use the datasets `MplsStops` and `MplsDemo` from the `carData` library. Search for them in Help to find out more information.
 
   14. Use the `MplsStops` dataset to find out how many stops there were for each neighborhood and the proportion of stops that were for a suspicious vehicle or person. Sort the results from most to least number of stops. Save this as a dataset called `mpls_suspicious` and display the table.  
+
+
+```{r}
+mpls_suspicious <- MplsStops %>%
+  mutate(neighborhood = fct_infreq(neighborhood)) %>%
+  group_by(neighborhood, problem) %>%
+  summarise(total_number = n()) %>%
+  pivot_wider(names_from = problem,
+              values_from = total_number) %>% 
+  summarise(prop_suspicious = suspicious/sum(suspicious, traffic),
+            total_stops = sum(suspicious, traffic))
+    
+mpls_suspicious
+```
   
   15. Use a `leaflet` map and the `MplsStops` dataset to display each of the stops on a map as a small point. Color the points differently depending on whether they were for suspicious vehicle/person or a traffic stop (the `problem` variable). HINTS: use `addCircleMarkers`, set `stroke = FAlSE`, use `colorFactor()` to create a palette.  
-  
+
+```{r}
+pal <- colorFactor(c("red", "blue"), 
+                     domain = MplsStops$problem)
+
+leaflet(data = MplsStops) %>% 
+  addTiles() %>% 
+  addCircleMarkers(lng = ~long, 
+             lat = ~lat,
+             color = ~pal(problem),
+             stroke = FALSE,
+             radius = 1,
+             fillOpacity = 0.3) %>%
+  addLegend(pal = pal, 
+            values = ~problem, 
+            opacity = 0.5, 
+            title = NULL,
+            position = "bottomright")
+
+
+```
+
   16. Save the folder from moodle called Minneapolis_Neighborhoods into your project/repository folder for this assignment. Make sure the folder is called Minneapolis_Neighborhoods. Use the code below to read in the data and make sure to **delete the `eval=FALSE`**. Although it looks like it only links to the .sph file, you need the entire folder of files to create the `mpls_nbhd` data set. These data contain information about the geometries of the Minneapolis neighborhoods. Using the `mpls_nbhd` dataset as the base file, join the `mpls_suspicious` and `MplsDemo` datasets to it by neighborhood (careful, they are named different things in the different files). Call this new dataset `mpls_all`.
 
-```{r, eval=FALSE}
-mpls_nbhd <- st_read("Minneapolis_Neighborhoods/Minneapolis_Neighborhoods.shp", quiet = TRUE)
+```{r}
+mpls_nbhd <- st_read("Minneapolis_Neighborhoods-20210215/Minneapolis_Neighborhoods.shp", quiet = TRUE)
+
+mpls_all <- mpls_nbhd %>% 
+  left_join(mpls_suspicious, by = c("BDNAME" = "neighborhood")) %>% 
+  left_join(MplsDemo, by = c("BDNAME" = "neighborhood"))
 ```
 
   17. Use `leaflet` to create a map from the `mpls_all` data  that colors the neighborhoods by `prop_suspicious`. Display the neighborhood name as you scroll over it. Describe what you observe in the map.
   
+```{r}
+pal <- colorNumeric("plasma", 
+                     domain = mpls_all$prop_suspicious) 
+
+leaflet(data = mpls_all) %>% 
+  addTiles() %>% 
+  addPolygons(fillColor = ~pal(prop_suspicious),
+             stroke = FALSE,
+             fillOpacity = 0.5,
+             label = ~BDNAME) %>%
+  addLegend(pal = pal, 
+            values = ~prop_suspicious, 
+            opacity = 0.7, 
+            title = NULL,
+            position = "bottomright")
+```
+  
   18. Use `leaflet` to create a map of your own choosing. Come up with a question you want to try to answer and use the map to help answer that question. Describe what your map shows. 
-  
-  
+
+```{r}
+pal <- colorNumeric("inferno", 
+                     domain = mpls_all$collegeGrad) 
+
+leaflet(data = mpls_all) %>% 
+  addTiles() %>% 
+  addPolygons(fillColor = ~pal(collegeGrad),
+             stroke = FALSE,
+             fillOpacity = 0.5,
+             label = ~BDNAME) %>%
+  addLegend(pal = pal, 
+            values = ~collegeGrad, 
+            opacity = 0.8, 
+            title = NULL,
+            position = "bottomright")
+
+
+```
+
+
+What does the distribution of percent college graduates look like across Minneapolis neighborhoods look like?
+
+Central Minneapolis and Southwestern Minneapolis neighborhoods have higher proportions of college graduates.
+
+
 ## GitHub link
 
   19. Below, provide a link to your GitHub page with this set of Weekly Exercises. Specifically, if the name of the file is 04_exercises.Rmd, provide a link to the 04_exercises.md file, which is the one that will be most readable on GitHub.
+  
+https://github.com/emilylugthar/week4_assignment/blob/main/04_exercises.rmd
 
 
 **DID YOU REMEMBER TO UNCOMMENT THE OPTIONS AT THE TOP?**
