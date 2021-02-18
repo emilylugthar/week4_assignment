@@ -12,7 +12,7 @@ output:
 
 
 ```{r setup, include=FALSE}
-#knitr::opts_chunk$set(echo = TRUE, error=TRUE, message=FALSE, warning=FALSE)
+knitr::opts_chunk$set(echo = TRUE, error=TRUE, message=FALSE, warning=FALSE)
 ```
 
 ```{r libraries}
@@ -98,45 +98,41 @@ These exercises will reiterate what you learned in the "Mapping data with R" tut
   
 ```{r}
 world <- get_stamenmap(
-    bbox = c(left = -180, 
-             bottom = -57, 
-             right = 179, 
-             top = 82.1), 
-    zoom = 2)
+  bbox = c(left = -180, bottom = -57, right = 179, top = 82.1), 
+  zoom = 2)
 
 ggmap(world) + 
   geom_point(data = Starbucks, 
-             aes(x = Longitude, 
-                 y = Latitude, 
-                 color = `Ownership Type`), 
+             aes(x = Longitude, y = Latitude, color = `Ownership Type`), 
              alpha = .3, 
-             size = .1) +
-  labs(title = "Starbucks Locations Across the World") +
+             size = .5) +
+  labs(title = "Starbucks Locations Around the World") +
   theme_map()
 ```
 
-This visualization shows generally the locations and concentrations of Starbucks stores across the world. It also shows the spacial distribution of ownership type.
+This visualization shows the general locations and concentrations of Starbucks stores throughout the world. It also shows the spacial distribution of ownership type.
 
   2. Construct a new map of Starbucks locations in the Twin Cities metro area (approximately the 5 county metro area).  
 
 ```{r}
 saint_paul <- get_stamenmap(
     bbox = c(left = -93.3825, bottom = 44.8728, right = -93.0083, top = 45.0511),
-    zoom = 11)
+    zoom = 12)
 
 ggmap(saint_paul) + 
   geom_point(data = Starbucks, 
              aes(x = Longitude, y = Latitude), 
              alpha = .7, 
-             size = 2) +
-  labs(title = "Starbucks Locations within the Twin Cities")
+             size = 2,
+             color = "red") +
+  labs(title = "Starbucks Locations within the Twin Cities") +
   theme_map()
 ```
 
 
   3. In the Twin Cities plot, play with the zoom number. What does it do?  (just describe what it does - don't actually include more than one map).  
 
-Zoom changes scale of the stamen map, larger numbers = farther out, smaller numbers = closer in 
+The zoom changes the scale or how zoomed in the base stamen map is. With larger numbers the map shows a larger area, and with smaller numbers the map is more zoomed in. 
 
   4. Try a couple different map types (see `get_stamenmap()` in help and look at `maptype`). Include a map with one of the other map types. 
 
@@ -144,11 +140,12 @@ Zoom changes scale of the stamen map, larger numbers = farther out, smaller numb
 saint_paul <- get_stamenmap(
     bbox = c(left = -93.3825, bottom = 44.8728, right = -93.0083, top = 45.0511),
     maptype = "watercolor",
-    zoom = 11)
+    zoom = 12)
 
 ggmap(saint_paul) + 
   geom_point(data = Starbucks, 
-             aes(x = Longitude, y = Latitude, color = `Ownership Type`), 
+             aes(x = Longitude, y = Latitude),
+             color = "purple",
              size = 2) +
   theme_map()
 ```
@@ -163,10 +160,11 @@ saint_paul <- get_stamenmap(
 
 ggmap(saint_paul) + 
   geom_point(data = Starbucks, 
-             aes(x = Longitude, y = Latitude, color = "green"), 
+             aes(x = Longitude, y = Latitude), 
+             color = "purple",
              size = 2) +
   annotate(geom = "text", x = -93.169233, y = 44.937846, label = "Macalester College") +
-  annotate(geom = "point", x = -93.169233, y = 44.937846) +
+  annotate(geom = "point", x = -93.169233, y = 44.937846, color = "red") +
   theme_map()
 ```
 
@@ -190,15 +188,14 @@ starbucks_with_2018_pop_est <-
   6. **`dplyr` review**: Look through the code above and describe what each line of code does.
   
   Lines one and two: reads in csv file from dropbox page as census_pop_est_2018 dataset
-  Line 3: separates state variable into two variables: the state name and the dot that was infront of each state name
+  Line 3: separates state variable into two variables: the state name and the dot that was in front of each state name
   Line 4: removes dot variable from census_pop_est_2018
   Line 5: mutates strings within state variable so each string is all lowercase 
   Line 6: creates new dataset starbucks_with_2018_pop_est
   Line 7, 8, and 9: left joins starbucks_us_by_state and census_pop_est_2018 by the variable state_name and state 
-  Line 10:creates new variable, starbucks_per_10000, that gives the number of Starbucks per 10,000 people by dividing total number of starbuckses per state by the 2018 population estimate of each state and multiplying by 10,000
+  Line 10: creates new variable, starbucks_per_10000, that gives the number of Starbucks per 10,000 people by dividing total number of starbuckses per state by the 2018 population estimate of each state and multiplying by 10,000
   
   
-
   7. Create a choropleth map that shows the number of Starbucks per 10,000 people on a map of the US. Use a new fill color, add points for all Starbucks in the US (except Hawaii and Alaska), add an informative title for the plot, and include a caption that says who created the plot (you!). Make a conclusion about what you observe.
   
 ```{r}
@@ -209,14 +206,19 @@ starbucks_with_2018_pop_est %>%
   geom_map(map = states_map,
            aes(map_id = state_name,
                fill = n)) +
+  geom_point(data = Starbucks %>% filter(`Country` == "US", `State/Province` != "HI" & `State/Province` != "AK" ),
+             aes(x = Longitude, y = Latitude),
+             size = .05,
+             alpha = .2, 
+             color = "goldenrod") +
   scale_fill_viridis_c(option = "plasma") +
   expand_limits(x = states_map$long, y = states_map$lat) + 
-  labs(title = "Starbucks Per 10,000 People", caption = "Emily Lugthart") +
+  labs(title = "Starbucks Locations Per 10,000 People", caption = "Emily Lugthart") +
   theme_map() +
   theme(legend.background = element_blank())
 ```
 
-More populated states generally have higher relative concentrations of Starbuckses
+States with large cities, like California, Texas, New York, and Illinois, generally have more Starbucks locations per 10,000 people.
 
 
 
@@ -249,11 +251,11 @@ favorite_places <- tibble(
           35.055688, 35.054131, 35.054593,
           34.712143, 34.652139, 34.939126, 
           34.988129),
-  top_3  = c("Top 3 Favorite Places", "Not top 3 Favorite", "Not top 3 Favorite",
-             "Not top 3 Favorite", "Not top 3 Favorite", "Not top 3 Favorite",
-             "Not top 3 Favorite", "Not top 3 Favorite", "Top 3 Favorite Places",
-             "Not top 3 Favorite", "Not top 3 Favorite", "Top 3 Favorite Places",
-             "Not top 3 Favorite"))
+  top_3  = c("Yes", "No", "No",
+             "No", "No", "No",
+             "No", "No", "Yes",
+             "No", "No", "Yes",
+             "No"))
 
 pal <- colorFactor(c("aquamarine4", "cornflowerblue"), 
                      domain = favorite_places$top_3)
@@ -273,7 +275,7 @@ leaflet(data = favorite_places) %>%
   addLegend(pal = pal, 
             values = ~top_3, 
             opacity = 0.5, 
-            title = NULL,
+            title = "Top 3 Favorite Places?",
             position = "bottomright")
   
 ```
@@ -323,8 +325,8 @@ leaflet(data = Total_station_trips) %>%
              fillOpacity = 0.8) %>%
   addLegend(pal = pal,
             values = ~num_trips,
-            opacity = 0.5,
-            title = NULL,
+            opacity = 0.8,
+            title = "Number of Bike Departures",
             position = "bottomright")
 ```
   
@@ -361,6 +363,8 @@ leaflet(data = percent_casual) %>%
             title = "Percent Casual Ridership",
             position = "bottomright")
 ```
+
+Downtown and tourist areas have higher percentages of casual ridership. 
   
 ### COVID-19 data
 
@@ -377,11 +381,15 @@ covid19 %>%
   mutate(state = str_to_lower(state)) %>% 
   ggplot() +
     geom_map(map = states_map,
-             aes(map_id  = state,
-                 fill = recent_count)) +
+             aes(map_id  = state,fill = recent_count)) +
   expand_limits(x = states_map$long, y = states_map$lat) +
+  scale_fill_viridis_c(option = "plasma") +
+  labs(title = "Cumulative COVID-19 Cases") +
   theme_map()
 ```
+
+This map shows cumulative cases, so it does not show the relative spread of COVID-19 within states. The states with the most counts, California and Texas, are the most populous states in the US.
+
   
   12. Now add the population of each state to the dataset and color the states by most recent cumulative cases/10,000 people. See the code for doing this with the Starbucks data. You will need to make some modifications. 
   
@@ -400,6 +408,8 @@ covid19 %>%
              aes(map_id  = state,
                  fill = cases_per_tentho)) +
   expand_limits(x = states_map$long, y = states_map$lat) +
+  scale_fill_viridis_c(option = "plasma") +
+  labs(title = "Cumulative COVID-19 Cases per 10,000 people") +
   theme_map()
   
 
@@ -409,7 +419,7 @@ covid19 %>%
   13. **CHALLENGE** Choose 4 dates spread over the time period of the data and create the same map as in exercise 12 for each of the dates. Display the four graphs together using faceting. What do you notice?
 
 ```{r}
-#states_map <- map_data("state")
+states_map <- map_data("state")
 
 covid19 %>% 
   filter(date == "2020-03-01" | 
@@ -429,6 +439,7 @@ covid19 %>%
   scale_fill_viridis_c(option = "plasma") +
   expand_limits(x = states_map$long, y = states_map$lat) +
   facet_wrap(~date) +
+  labs(title = "Cummulative COVID-19 Cases per 10,000 People Over Time") +
   theme_map()
   
 
@@ -436,7 +447,7 @@ covid19 %>%
 ```
 
 
-
+Number of cases per 10,000 people in almost every state increases significantly from March 2020 to Febuary 2021.
 
 
 
@@ -477,7 +488,7 @@ leaflet(data = MplsStops) %>%
   addLegend(pal = pal, 
             values = ~problem, 
             opacity = 0.5, 
-            title = NULL,
+            title = "Problem",
             position = "bottomright")
 
 
@@ -512,6 +523,10 @@ leaflet(data = mpls_all) %>%
             position = "bottomright")
 ```
   
+
+Neighborhoods in southeastern Minneapolis have higher proportions of suspicious vehicles and persons as the reason for a stop. 
+  
+  
   18. Use `leaflet` to create a map of your own choosing. Come up with a question you want to try to answer and use the map to help answer that question. Describe what your map shows. 
 
 ```{r}
@@ -536,7 +551,7 @@ leaflet(data = mpls_all) %>%
 
 What does the distribution of percent college graduates look like across Minneapolis neighborhoods look like?
 
-Central Minneapolis and Southwestern Minneapolis neighborhoods have higher proportions of college graduates.
+Central Minneapolis and southwestern Minneapolis neighborhoods have higher proportions of college graduates.
 
 
 ## GitHub link
