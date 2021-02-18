@@ -159,9 +159,10 @@ saint_paul <- get_stamenmap(
 
 ggmap(saint_paul) + 
   geom_point(data = Starbucks, 
-             aes(x = Longitude, y = Latitude, color = `Ownership Type`), 
+             aes(x = Longitude, y = Latitude, color = "green"), 
              size = 2) +
   annotate(geom = "text", x = -93.169233, y = 44.937846, label = "Macalester College") +
+  annotate(geom = "point", x = -93.169233, y = 44.937846) +
   expand_limits(x = states_map$long, y = states_map$lat) +
   theme_map()
 ```
@@ -172,15 +173,15 @@ The example I showed in the tutorial did not account for population of each stat
 
 ```{r}
 census_pop_est_2018 <- read_csv("https://www.dropbox.com/s/6txwv3b4ng7pepe/us_census_2018_state_pop_est.csv?dl=1") %>% 
-  separate(state, into = c("dot","state"), extra = "merge") 
+  separate(state, into = c("dot","state"), extra = "merge") %>% 
   select(-dot) %>% 
-   mutate(state = str_to_lower(state))
-# 
-# starbucks_with_2018_pop_est <-
-#   starbucks_us_by_state %>% 
-#   left_join(census_pop_est_2018,
-#             by = c("state_name" = "state")) %>% 
-#   mutate(starbucks_per_10000 = (n/est_pop_2018)*10000)
+  mutate(state = str_to_lower(state))
+  
+starbucks_with_2018_pop_est <-
+  starbucks_us_by_state %>%
+  left_join(census_pop_est_2018,
+            by = c("state_name" = "state")) %>%
+  mutate(starbucks_per_10000 = (n/est_pop_2018)*10000)
 ```
 
   6. **`dplyr` review**: Look through the code above and describe what each line of code does.
@@ -188,10 +189,31 @@ census_pop_est_2018 <- read_csv("https://www.dropbox.com/s/6txwv3b4ng7pepe/us_ce
   Lines one and two: reads in csv file from dropbox page as census_pop_est_2018 dataset
   Line 3: separates state variable into two variables: the state name and the dot that was infront of each state name
   Line 4: removes dot variable from census_pop_est_2018
-  Line 5:
+  Line 5: mutates strings within state variable so each string is all lowercase 
+  Line 6: creates new dataset starbucks_with_2018_pop_est
+  Line 7, 8, and 9: left joins starbucks_us_by_state and census_pop_est_2018 by the variable state_name and state 
+  Line 10:creates new variable, starbucks_per_10000, that gives the number of Starbucks per 10,000 people by dividing total number of starbuckses per state by the 2018 population estimate of each state and multiplying by 10,000
+  
   
 
   7. Create a choropleth map that shows the number of Starbucks per 10,000 people on a map of the US. Use a new fill color, add points for all Starbucks in the US (except Hawaii and Alaska), add an informative title for the plot, and include a caption that says who created the plot (you!). Make a conclusion about what you observe.
+  
+```{r}
+starbucks_with_2018_pop_est %>% 
+  ggplot() +
+  geom_map(map = states_map,
+           aes(map_id = state_name,
+               fill = n)) +
+  scale_fill_viridis_c(option = "plasma") +
+  expand_limits(x = states_map$long, y = states_map$lat) + 
+  labs(title = "Starbucks Per 10,000 People", caption = "Emily Lugthart") +
+  theme_map() +
+  theme(legend.background = element_blank())
+```
+
+More populated states generally have higher relative concentrations of Starbuckses
+
+
 
 ### A few of your favorite things (`leaflet`)
 
@@ -203,7 +225,53 @@ census_pop_est_2018 <- read_csv("https://www.dropbox.com/s/6txwv3b4ng7pepe/us_ce
   
   * Connect all your locations together with a line in a meaningful way (you may need to order them differently in the original data).  
   
-  * If there are other variables you want to add that could enhance your plot, do that now.  
+  * If there are other variables you want to add that could enhance your plot, do that now. 
+  
+```{r}
+favorite_places <- tibble(
+  place = c("Home", "Pinhoti Trail - Dug Gap Trailhead", "Dalton State College",
+            "Kroger", "Lakeshore Park", "Chattanooga Airport",
+            "Tennessee Aquarium", "Thai Smile", "Rembrandt's Coffee House",
+            "Shirley Miller Wildflower Trail", "R & A Orchards", "Conasauga River Trailhead", 
+            "Jacks River Trail - Western Trailhead"),
+  long = c(-85.041218, -85.018327, -85.003793,
+           -84.994246, -84.975441, -85.196894,
+           -85.310685, -85.309877, -85.305460,
+           -85.3711718, -84.421067, -84.658633, 
+           -84.633136),
+  lat = c(34.736588, 34.733011, 34.774228,
+          34.758793, 34.749908, 35.037457,
+          35.055688, 35.054131, 35.054593,
+          34.712143, 34.652139, 34.939126, 
+          34.988129),
+  top_3  = c("Top 3 Favorite Places", "Not top 3 Favorite", "Not top 3 Favorite",
+             "Not top 3 Favorite", "Not top 3 Favorite", "Not top 3 Favorite",
+             "Not top 3 Favorite", "Not top 3 Favorite", "Top 3 Favorite Places",
+             "Not top 3 Favorite", "Not top 3 Favorite", "Top 3 Favorite Places",
+             "Not top 3 Favorite"))
+
+pal <- colorFactor(c("aquamarine4", "cornflowerblue"), 
+                     domain = favorite_places$top_3)
+
+leaflet(data = favorite_places) %>% 
+  addTiles() %>% 
+  addCircleMarkers(lng = ~long, 
+             lat = ~lat, 
+             label = ~place,
+             color = ~pal(top_3),
+             stroke = FALSE,
+             radius = 6,
+             fillOpacity = 0.7) %>%
+  addPolylines(lng = ~long, 
+               lat = ~lat, 
+               color = col2hex("coral2")) %>% 
+  addLegend(pal = pal, 
+            values = ~top_3, 
+            opacity = 0.5, 
+            title = NULL,
+            position = "bottomright")
+  
+```
   
 ## Revisiting old datasets
 
@@ -230,13 +298,63 @@ Stations<-read_csv("http://www.macalester.edu/~dshuman1/data/112/DC-Stations.csv
   9. Use the latitude and longitude variables in `Stations` to make a visualization of the total number of departures from each station in the `Trips` data. Use either color or size to show the variation in number of departures. This time, plot the points on top of a map. Use any of the mapping tools you'd like.
   
 ```{r}
+Total_station_trips <- Trips %>% 
+  group_by(sstation) %>% 
+  summarize(num_trips = n()) %>% 
+  left_join(Stations, by = c("sstation" = "name"))
 
+pal <- colorNumeric("viridis", 
+                     domain = Total_station_trips$num_trips)  
+  
+
+leaflet(data = Total_station_trips) %>%
+  addTiles() %>%
+  addCircleMarkers(lng = ~long,
+             lat = ~lat,
+             label = ~sstation,
+             color = ~pal(num_trips),
+             stroke = FALSE,
+             radius = 6,
+             fillOpacity = 0.8) %>%
+  addLegend(pal = pal,
+            values = ~num_trips,
+            opacity = 0.5,
+            title = NULL,
+            position = "bottomright")
 ```
   
   10. Only 14.4% of the trips in our data are carried out by casual users. Create a plot that shows which area(s) have stations with a much higher percentage of departures by casual users. What patterns do you notice? Also plot this on top of a map. I think it will be more clear what the patterns are.
   
 ```{r}
+percent_casual <- Trips %>%
+  group_by(sstation) %>% 
+  count(client) %>% 
+  mutate(percentcas = n/sum(n)) %>% 
+  pivot_wider(id_cols = sstation:percentcas, 
+              names_from = client,
+              values_from = percentcas) %>%
+  select(-Registered) %>% 
+  drop_na() %>% 
+  left_join(Stations, by = c("sstation" = "name")) 
 
+pal <- colorNumeric("inferno",
+                     domain = percent_casual$Casual)
+
+
+leaflet(data = percent_casual) %>%
+  addTiles() %>%
+  addCircleMarkers(lng = ~long,
+             lat = ~lat,
+             label = ~sstation,
+             color = ~pal(Casual),
+             stroke = FALSE,
+             radius = 6,
+             fillOpacity = 0.8) %>%
+  addLegend(pal = pal,
+            values = ~Casual,
+            opacity = 0.5,
+            title = "Percent Casual Ridership",
+            position = "bottomright")
 ```
   
 ### COVID-19 data
@@ -258,9 +376,6 @@ covid19 %>%
                  fill = recent_count)) +
   expand_limits(x = states_map$long, y = states_map$lat) +
   theme_map()
-  
-
-
 ```
   
   12. Now add the population of each state to the dataset and color the states by most recent cumulative cases/10,000 people. See the code for doing this with the Starbucks data. You will need to make some modifications. 
@@ -272,9 +387,9 @@ covid19 %>%
   group_by(state) %>% 
   summarize(recent_count = max(cases)) %>% 
   mutate(state = str_to_lower(state)) %>% 
-  left_join(census_pop_est_2018, 
-            by = c("state")) %>% 
-  mutate(cases_per_tentho = (recent_count/est_pop_2018)*10000) %>% 
+  left_join(census_pop_est_2018,
+            by = "state") %>% 
+  mutate(cases_per_tentho = (recent_count/est_pop_2018)*10000) %>%
   ggplot() +
     geom_map(map = states_map,
              aes(map_id  = state,
@@ -282,13 +397,38 @@ covid19 %>%
   expand_limits(x = states_map$long, y = states_map$lat) +
   theme_map()
   
-  
-  
+
 
 ```
   
   13. **CHALLENGE** Choose 4 dates spread over the time period of the data and create the same map as in exercise 12 for each of the dates. Display the four graphs together using faceting. What do you notice?
+
+```{r}
+states_map <- map_data("state")
+
+covid19 %>% 
+  group_by(state) %>% 
+  summarize(recent_count = max(cases)) %>% 
+  mutate(state = str_to_lower(state)) %>% 
+  left_join(census_pop_est_2018,
+            by = "state") %>% 
+  mutate(cases_per_tentho = (recent_count/est_pop_2018)*10000) %>%
+  ggplot() +
+    geom_map(map = states_map,
+             aes(map_id  = state,
+                 fill = cases_per_tentho)) +
+  expand_limits(x = states_map$long, y = states_map$lat) +
+  theme_map()
   
+
+
+```
+
+
+
+
+
+
 ## Minneapolis police stops
 
 These exercises use the datasets `MplsStops` and `MplsDemo` from the `carData` library. Search for them in Help to find out more information.
