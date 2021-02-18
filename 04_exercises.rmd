@@ -147,6 +147,7 @@ ggmap(saint_paul) +
              aes(x = Longitude, y = Latitude),
              color = "purple",
              size = 2) +
+  labs(title = "Starbucks Locations within the Twin Cities") +
   theme_map()
 ```
 
@@ -165,6 +166,7 @@ ggmap(saint_paul) +
              size = 2) +
   annotate(geom = "text", x = -93.169233, y = 44.937846, label = "Macalester College") +
   annotate(geom = "point", x = -93.169233, y = 44.937846, color = "red") +
+  labs(title = "Starbucks Locations within the Twin Cities") +
   theme_map()
 ```
 
@@ -261,7 +263,8 @@ pal <- colorFactor(c("aquamarine4", "cornflowerblue"),
                      domain = favorite_places$top_3)
 
 leaflet(data = favorite_places) %>% 
-  addTiles() %>% 
+  addTiles() %>%
+  addProviderTiles(providers$CartoDB.Positron) %>% 
   addCircleMarkers(lng = ~long, 
              lat = ~lat, 
              label = ~place,
